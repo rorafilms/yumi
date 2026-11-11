@@ -739,6 +739,7 @@ $("bJoin").onclick=()=>{const c=$("codeIn").value.trim().toLowerCase();if(!/^[a-
 $("bStart").onclick=()=>{if(!G.lobbyCh)return;G.run=(G.run||0)+1;G.lastRun=G.run;startPlay(G.lobbyCh);sendPresence(true)};
 $("bLeave").onclick=()=>leaveAll();
 
+setInterval(()=>{if(G.mode==="lobby")mpTick()},300);
 /* ================= main loop ================= */
 let last=performance.now();
 function frame(now){
