@@ -481,7 +481,7 @@ async function joinRoom(c,creator){
  $("mpErr").textContent="";
  code=c;isCreator=creator;G.solo=false;G.run=0;G.lobbyCh=creator?"yarik":null;
  R.onPeers(()=>{if(G.mode==="lobby")drawLobby()});
- sendPresence(true);show("lobby");G.mode="lobby";$("lCode").textContent=c.toUpperCase();
+ G.mode="lobby";sendPresence(true);show("lobby");$("lCode").textContent=c.toUpperCase();
  setTimeout(()=>{if(!G.lobbyCh){const taken=remotePlayers().map(p=>p.ch);G.lobbyCh=taken.includes("yarik")?"arina":"yarik";sendPresence(true);drawLobby()}},1500);
  drawLobby();
 }
@@ -502,7 +502,7 @@ function drawLobby(){
 document.querySelectorAll("#lChars .card").forEach(c=>c.onclick=()=>{G.lobbyCh=c.dataset.ch;sendPresence(true);drawLobby()});
 function mpTick(){ // lobby/game coordination
  if(G.solo||!R)return;const h=hostInfo();
- if(G.mode==="lobby"){if(h&&!h.me&&h.s.st==="play"&&h.s.run!==G.lastRun&&G.lobbyCh){G.run=h.s.run;G.lastRun=G.run;startPlay(G.lobbyCh)}return}
+ if(G.mode==="lobby"){sendPresence(false);if(h&&!h.me&&h.s.st==="play"&&h.s.run>0&&h.s.run!==G.lastRun&&G.lobbyCh){G.run=h.s.run;G.lastRun=G.run;startPlay(G.lobbyCh)}return}
  if(h&&!h.me&&h.s.st==="lobby"&&G.mode!=="menu"){backToLobby();return}
  // ending by partner
  if(!G.ended&&remotePlayers().some(p=>p.end&&p.run===G.run))doEnding();
