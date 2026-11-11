@@ -90,7 +90,7 @@ input.code{background:#000;border:1px solid #5a2a2a;color:#fff;font:inherit;font
   <div class="sub">потерянная в тёмном лесу</div>
   <button class="btn" id="bSolo">Одиночная игра</button>
   <button class="btn" id="bMulti" disabled>Мультиплеер (подключение…)</button>
-  <div class="small" style="position:fixed;right:14px;bottom:10px;font-size:12px;color:#5a5248">версия 1.7</div>
+  <div class="small" style="position:fixed;right:14px;bottom:10px;font-size:12px;color:#5a5248">версия 1.8</div>
   <div class="small" id="mpInfo">Для игры вдвоём второй игрок открывает эту же страницу у себя и вводит код комнаты.</div>
 </div>
 
@@ -177,9 +177,9 @@ const NOTES=[
  ["Ночь девятая","Он до сих пор ищет. Он забирает всё потерянное — детей, собак, людей, сошедших с тропы — и смотрит каждому в лицо: не она ли? Не она. Тогда он оставляет их себе, в чаще, навсегда. Я видел их силуэты среди деревьев. Они стоят и не шевелятся. Юми теперь огромный белый волк. Она ушла в чащу, но Долговязый перестал подходить к сторожке. Она меня охраняет."],
  ["Ночь двенадцатая","Правила, которые я понял. Он не любит, когда на него смотрят, — но смотреть долго нельзя: в глазах начинается снег, в ушах — шум, и тогда он забирает тебя. Он подкрадывается, когда ты отвернулся. Если слышишь хруст снега за спиной или сломанную ветку — не стой. Если звенит в ушах — он совсем рядом. Если гаснет фонарь — он уже здесь."],
  ["Ночь пятнадцатая","Он не может забрать до конца того, кого кто-то ещё ищет. Пока Юми зовут по имени, она остаётся собой. Её хозяева где-то в лесу — я видел два фонаря. Долговязый тоже их видит. Он злится: его собаку никто не искал так долго, кроме него самого. А он сдался и превратился в это. Не сдавайтесь. Если кто-то из вас упадёт — поднимите друг друга."],
- ["Последняя страница","Он идёт за мной, я слышу шаги. Если вы нашли все страницы — вы ищете её по-настоящему, и лес это знает. Белый волк ждёт там, откуда вы пришли, в самом центре леса. Не бойтесь его. Позовите её по имени. А если когда-нибудь услышите в лесу долгий свист — это Долгов всё ещё зовёт свою собаку. Её звали Тайга."]
+ ["Последняя страница","Он идёт за мной, я слышу шаги. Если вы нашли все страницы — вы ищете её по-настоящему, и лес это знает. Белый волк ждёт там, откуда вы пришли, в самом центре леса. Не бойтесь его. Позовите её по имени. Я наконец понял, почему он пришёл именно за ней. Его собаку тоже звали Юми. Сорок лет он свистит в темноту и зовёт это имя — и в этот раз кто-то откликнулся."]
 ];
-const DEATH_LINES=["«Не она…» — шепчет что-то над тобой.","Ещё один силуэт среди деревьев. Ещё один, кого никто не искал.","Где-то вдали раздаётся долгий свист. Он всё ещё ищет.","Снег медленно засыпает твой фонарь.","«Тайга?.. Нет. Не она.»"];
+const DEATH_LINES=["«Не она…» — шепчет что-то над тобой.","Ещё один силуэт среди деревьев. Ещё один, кого никто не искал.","Где-то вдали раздаётся долгий свист. Он всё ещё ищет.","Снег медленно засыпает твой фонарь.","«Юми?.. Нет. Не она.»"];
 
 /* ================= utils ================= */
 const $=id=>document.getElementById(id);
@@ -528,7 +528,7 @@ const mqttNet={async join(name,creator){const R=makeNetRoom();const me="c"+Math.
  R.leave=()=>{clearInterval(R.iv);conns.forEach(c=>{c.send(base+me,{bye:1});c.close()});return Promise.resolve()};
  const hostSeen=()=>Object.values(R.states).some(s=>s&&s.host);
  if(creator){await new Promise(r=>setTimeout(r,1200));if(hostSeen()){R.leave();throw{code:"taken"}}}
- else{const t0=Date.now();while(Date.now()-t0<15000&&!hostSeen())await new Promise(r=>setTimeout(r,200));if(!hostSeen()){R.leave();throw{code:"комната не найдена. Проверь код и что у создателя тоже версия 1.7 и он в лобби. Твои серверы: "+R.servers}}}
+ else{const t0=Date.now();while(Date.now()-t0<15000&&!hostSeen())await new Promise(r=>setTimeout(r,200));if(!hostSeen()){R.leave();throw{code:"комната не найдена. Проверь код и что у создателя тоже версия 1.8 и он в лобби. Твои серверы: "+R.servers}}}
  return R}};
 /* --- (old) P2P networking via PeerJS, kept as reference, not used --- */
 function loadPeerJS(){return new Promise((res,rej)=>{if(window.Peer)return res();const s=document.createElement("script");s.src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js";s.onload=()=>res();s.onerror=()=>rej({code:"не загрузилась сетевая библиотека"});document.head.appendChild(s)})}
@@ -581,7 +581,7 @@ function drawLobby(){
  document.querySelectorAll("#lChars .card").forEach(c=>{const ch=c.dataset.ch;c.classList.toggle("sel",G.lobbyCh===ch);c.classList.toggle("taken",taken.includes(ch)&&G.lobbyCh!==ch);c.querySelector("i").textContent=G.lobbyCh===ch?"это ты":taken.includes(ch)?"занят":"свободен"});
  $("peers").innerHTML=others.length?others.map(p=>`<div>● ${p.ch?NAMES[p.ch]:"игрок выбирает…"} — в комнате</div>`).join(""):`<div style="color:#8a7f70">Ждём второго игрока… (можно начать и одному)</div>`;
  const h=hostInfo();const me=!h||h.me;$("bStart").style.display=me?"":"none";$("lWait").textContent=me?"":"Ждём, когда создатель комнаты начнёт игру…";
- $("bStart").disabled=!G.lobbyCh;$("lNet").textContent="Версия 1.7 · серверы: "+(R&&R.servers||(NETKIND==="claude"?"Claude":"?"));
+ $("bStart").disabled=!G.lobbyCh;$("lNet").textContent="Версия 1.8 · серверы: "+(R&&R.servers||(NETKIND==="claude"?"Claude":"?"));
 }
 document.querySelectorAll("#lChars .card").forEach(c=>c.onclick=()=>{G.lobbyCh=c.dataset.ch;sendPresence(true);drawLobby()});
 function mpTick(){ // lobby/game coordination
@@ -771,7 +771,7 @@ function leaveAll(){if(R){R.leave().catch(()=>{});R=null}G.solo=true;G.mode="men
 function doEnding(){if(G.ended)return;G.ended=true;G.mode="end";sendPresence(true);stopMusic();document.exitPointerLock&&document.exitPointerLock();
  $("hud").classList.remove("on");show("end");$("endText").textContent="";$("bAgain").style.opacity=0;
  const c=$("endc"),g=c.getContext("2d");let t=0;sHowl(.25);setTimeout(sMusicBox,2600);
- const lines=["Белый волк смотрит на тебя знакомыми чёрными глазами.","«Юми…» — тихо зовёшь ты.","Волк становится меньше… ещё меньше…","На снегу сидит маленькая белая мальтезе и виляет хвостом. Юми вернулась домой.","А где-то в глубине леса раздаётся долгий свист. Долгов всё ещё ищет свою Тайгу."];
+ const lines=["Белый волк смотрит на тебя знакомыми чёрными глазами.","«Юми…» — тихо зовёшь ты.","Волк становится меньше… ещё меньше…","На снегу сидит маленькая белая мальтезе и виляет хвостом. Юми вернулась домой.","А где-то в глубине леса раздаётся долгий свист. Долгов всё ещё зовёт свою Юми — ту, другую."];
  const tick=()=>{t+=1/60;g.fillStyle="#000";g.fillRect(0,0,600,600);
   const k=sstep(3,6.5,t);
   if(k<1){const s=1-k*.75;g.save();g.globalAlpha=1-sstep(5.5,6.5,t);g.imageSmoothingEnabled=false;const w=560*s,h=w*TX.wolf.h/TX.wolf.w;g.drawImage(TX.wolf.cv,300-w/2,330-h/2,w,h);g.restore()}
