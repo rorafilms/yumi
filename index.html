@@ -554,7 +554,7 @@ function drawLobby(){
 document.querySelectorAll("#lChars .card").forEach(c=>c.onclick=()=>{G.lobbyCh=c.dataset.ch;sendPresence(true);drawLobby()});
 function mpTick(){ // lobby/game coordination
  if(G.solo||!R)return;const h=hostInfo();
- if(G.mode==="lobby"){sendPresence(false);if(h&&!h.me&&h.s.st==="play"&&h.s.run>0&&h.s.run!==G.lastRun&&G.lobbyCh){G.run=h.s.run;G.lastRun=G.run;startPlay(G.lobbyCh)}return}
+ if(G.mode==="lobby"){sendPresence(false);const nowL=performance.now();if(!G.lobbyDraw||nowL-G.lobbyDraw>400){G.lobbyDraw=nowL;drawLobby()}if(h&&!h.me&&h.s.st==="play"&&h.s.run>0&&h.s.run!==G.lastRun&&G.lobbyCh){G.run=h.s.run;G.lastRun=G.run;startPlay(G.lobbyCh)}return}
  if(h&&!h.me&&h.s.st==="lobby"&&G.mode!=="menu"){backToLobby();return}
  // ending by partner
  if(!G.ended&&remotePlayers().some(p=>p.end&&p.run===G.run))doEnding();
