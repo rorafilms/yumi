@@ -77,6 +77,7 @@ input.code{background:#000;border:1px solid #5a2a2a;color:#fff;font:inherit;font
   <div class="sub">потерянная в тёмном лесу</div>
   <button class="btn" id="bSolo">Одиночная игра</button>
   <button class="btn" id="bMulti" disabled>Мультиплеер (подключение…)</button>
+  <div class="small" style="position:fixed;right:14px;bottom:10px;font-size:12px;color:#5a5248">версия 1.6</div>
   <div class="small" id="mpInfo">Для игры вдвоём второй игрок открывает эту же страницу у себя и вводит код комнаты.</div>
 </div>
 
@@ -115,7 +116,7 @@ input.code{background:#000;border:1px solid #5a2a2a;color:#fff;font:inherit;font
     </div>
     <div id="peers"></div>
     <button class="btn" id="bStart">Начать игру</button>
-    <div class="small" id="lWait"></div>
+    <div class="small" id="lWait"></div><div class="small" id="lNet" style="font-size:12px;color:#6d6458"></div>
     <button class="btn" id="bLeave" style="min-width:160px;font-size:16px">Выйти</button>
   </div>
 </div>
@@ -489,14 +490,14 @@ const mqttNet={async join(name,creator){const R=makeNetRoom();const me="c"+Math.
  const onMsg=(t,d)=>{const id=t.slice(base.length);if(!id||id===me||!d||typeof d!=="object")return;if(d.bye){delete R.states[id];delete last[id];R.fire();return}
   if(d.p&&typeof d.p==="object"){const isNew=!R.states[id];R.states[id]=d.p;last[id]=Date.now();if(isNew)R.fire()}};
  const rs=await Promise.allSettled(BROKERS.map(u=>mqttConn(u,me+"_"+Math.random().toString(36).slice(2,6),onMsg)));
- const conns=rs.filter(x=>x.status==="fulfilled").map(x=>x.value);
+ const conns=rs.filter(x=>x.status==="fulfilled").map(x=>x.value);R.servers=rs.map((x,i)=>x.status==="fulfilled"?"ABC"[i]:null).filter(Boolean).join(" ");
  if(!conns.length)throw{code:"нет связи с игровым сервером (проверь интернет)"};
  conns.forEach(c=>c.sub(base+"+"));
  R.iv=setInterval(()=>{const msg={p:R.mine};conns.forEach(c=>c.send(base+me,msg));const now=Date.now();let ch=false;for(const k in last)if(now-last[k]>6000){delete last[k];delete R.states[k];ch=true}if(ch)R.fire()},100);
  R.leave=()=>{clearInterval(R.iv);conns.forEach(c=>{c.send(base+me,{bye:1});c.close()});return Promise.resolve()};
  const hostSeen=()=>Object.values(R.states).some(s=>s&&s.host);
  if(creator){await new Promise(r=>setTimeout(r,1200));if(hostSeen()){R.leave();throw{code:"taken"}}}
- else{const t0=Date.now();while(Date.now()-t0<8000&&!hostSeen())await new Promise(r=>setTimeout(r,200));if(!hostSeen()){R.leave();throw{code:"комнаты с таким кодом нет — проверь код, создатель должен быть в лобби"}}}
+ else{const t0=Date.now();while(Date.now()-t0<15000&&!hostSeen())await new Promise(r=>setTimeout(r,200));if(!hostSeen()){R.leave();throw{code:"комната не найдена. Проверь код и что у создателя тоже версия 1.6 и он в лобби. Твои серверы: "+R.servers}}}
  return R}};
 /* --- (old) P2P networking via PeerJS, kept as reference, not used --- */
 function loadPeerJS(){return new Promise((res,rej)=>{if(window.Peer)return res();const s=document.createElement("script");s.src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js";s.onload=()=>res();s.onerror=()=>rej({code:"не загрузилась сетевая библиотека"});document.head.appendChild(s)})}
@@ -549,7 +550,7 @@ function drawLobby(){
  document.querySelectorAll("#lChars .card").forEach(c=>{const ch=c.dataset.ch;c.classList.toggle("sel",G.lobbyCh===ch);c.classList.toggle("taken",taken.includes(ch)&&G.lobbyCh!==ch);c.querySelector("i").textContent=G.lobbyCh===ch?"это ты":taken.includes(ch)?"занят":"свободен"});
  $("peers").innerHTML=others.length?others.map(p=>`<div>● ${p.ch?NAMES[p.ch]:"игрок выбирает…"} — в комнате</div>`).join(""):`<div style="color:#8a7f70">Ждём второго игрока… (можно начать и одному)</div>`;
  const h=hostInfo();const me=!h||h.me;$("bStart").style.display=me?"":"none";$("lWait").textContent=me?"":"Ждём, когда создатель комнаты начнёт игру…";
- $("bStart").disabled=!G.lobbyCh;
+ $("bStart").disabled=!G.lobbyCh;$("lNet").textContent="Версия 1.6 · серверы: "+(R&&R.servers||(NETKIND==="claude"?"Claude":"?"));
 }
 document.querySelectorAll("#lChars .card").forEach(c=>c.onclick=()=>{G.lobbyCh=c.dataset.ch;sendPresence(true);drawLobby()});
 function mpTick(){ // lobby/game coordination
