@@ -36,6 +36,7 @@ input.code{background:#000;border:1px solid #5a2a2a;color:#fff;font:inherit;font
 #notes{position:absolute;left:22px;top:18px;font-size:22px;letter-spacing:.08em;color:#e8e2d6;text-shadow:0 0 6px #000}
 #me{position:absolute;right:20px;top:16px;display:flex;align-items:center;gap:10px;font-size:16px;text-shadow:0 0 6px #000}
 #me canvas{width:48px;height:60px}
+#noteHint{font-size:14px;letter-spacing:normal}
 #pal{position:absolute;right:20px;top:86px;font-size:15px;color:#cfc6b5;text-shadow:0 0 6px #000;text-align:right}
 #stam{position:absolute;left:50%;bottom:26px;width:180px;height:3px;margin-left:-90px;background:rgba(255,255,255,.08)}
 #stam div{height:100%;background:rgba(220,210,190,.55);width:100%}
@@ -76,7 +77,7 @@ input.code{background:#000;border:1px solid #5a2a2a;color:#fff;font:inherit;font
 <canvas id="scr"></canvas>
 
 <div id="hud">
-  <div id="notes">Записки: 0/8</div>
+  <div id="notes"><span id="noteCount">Записки: 0/8</span><br><small id="noteHint" hidden></small></div>
   <div id="me"><span id="meName"></span><canvas id="meFace" width="96" height="120"></canvas></div>
   <div id="pal"></div>
   <div id="stam"><div></div></div>
@@ -90,7 +91,7 @@ input.code{background:#000;border:1px solid #5a2a2a;color:#fff;font:inherit;font
   <div class="sub">потерянная в тёмном лесу</div>
   <button class="btn" id="bSolo">Одиночная игра</button>
   <button class="btn" id="bMulti" disabled>Мультиплеер (подключение…)</button>
-  <div class="small" style="position:fixed;right:14px;bottom:10px;font-size:12px;color:#5a5248">версия 1.9</div>
+  <div class="small" style="position:fixed;right:14px;bottom:10px;font-size:12px;color:#5a5248">версия 1.10</div>
   <div class="small" id="mpInfo">Для игры вдвоём второй игрок открывает эту же страницу у себя и вводит код комнаты.</div>
 </div>
 
@@ -474,12 +475,14 @@ function screenPos(p){const W=scr.width,H=scr.height,sc=Math.max(W/RW,H/RH);retu
 const G={mode:"menu",solo:true,ch:null,alive:true,myNotes:[],read:[],stam:1,t:0,introT:0,spect:false,ended:false,
  mon:{x:-99,y:-99,active:false,timer:0,seen:false,stingCd:0},wolf:{x:-99,y:-99,vis:0,next:30},final:false,run:0};
 const keys={};
+const REVIVE_TIME=1;
+const NOTE_HINT_DELAY=120;
 function allNotes(){const s=new Set(G.myNotes);if(!G.solo)for(const p of remotePlayers())if(p.run===G.run&&Array.isArray(p.n))p.n.forEach(i=>{if(i>=0&&i<8)s.add(i|0)});return s}
 function resetGame(ch){
  G.ch=ch;G.alive=true;G.myNotes=[];G.read=[];G.stam=1;G.t=0;G.spect=false;G.ended=false;G.final=false;STATIC=0;G.deathT=0;
  G.mon={x:-99,y:-99,active:false,timer:4,seen:false,stingCd:0,vis:false};prevNotes=0;prevMine=0;G.wolf={x:-99,y:-99,vis:0,next:35+Math.random()*25};
  cam.x=ch==="arina"?CX+.7:CX-.3;cam.y=CY+.8;cam.a=-Math.PI/2;cam.pitch=0;cam.flash=true;G.paused=false;
- G.scareT=45+Math.random()*40;G.ffT=55+Math.random()*30;G.ffOff=0;G.wolfScareT=0;G.wolfScared=false;G.grace=0;G.rvProg=0;G.rvOut=G.rvOut||null;G.rvSeen={};G.pdead={};G.prox=0;G.noteScare=false;G.bodyX=0;G.bodyY=0;
+ G.scareT=45+Math.random()*40;G.ffT=55+Math.random()*30;G.ffOff=0;G.wolfScareT=0;G.wolfScared=false;G.grace=0;G.stagger=0;G.canRecover=true;G.noteHintAt=NOTE_HINT_DELAY;$("noteHint").hidden=true;G.rvProg=0;G.rvOut=G.rvOut||null;G.rvSeen={};G.pdead={};G.prox=0;G.noteScare=false;G.bodyX=0;G.bodyY=0;
  $("meName").textContent=NAMES[ch];drawPortrait($("meFace"),ch);
 }
 function startPlay(ch){
@@ -642,7 +645,6 @@ $("bPMenu").onclick=()=>{G.paused=false;if(A.ctx)A.ctx.resume();leaveAll()};
 function tryPick(){if(!G.alive)return;const have=allNotes();
  for(const n of notesPos){if(have.has(n.id))continue;const dx=n.x-cam.x,dy=n.y-cam.y,d=Math.hypot(dx,dy);if(d>1.35)continue;let da=Math.atan2(dy,dx)-cam.a;da=Math.atan2(Math.sin(da),Math.cos(da));if(Math.abs(da)>.6)continue;
   G.myNotes.push(n.id);sPaper();const cnt=allNotes().size;showNote(cnt-1);if(cnt===3||cnt===6)G.noteScare=true;
-  if((cnt===4||cnt===7)&&amHost()){const bx=cam.x-Math.cos(cam.a)*1.9,by=cam.y-Math.sin(cam.a)*1.9;if(freeSpot(bx,by)){G.mon.active=true;G.mon.x=bx;G.mon.y=by;G.mon.timer=5;G.mon.stingCd=0}}
   sendPresence(true);updateHud();return}}
 function showNote(idx){idx=clamp(idx,0,7);if(!G.read.includes(idx))G.read.push(idx);$("nTitle").textContent=NOTES[idx][0];$("nText").textContent=NOTES[idx][1];show("note")}
 function openJournal(){const n=allNotes().size;const L=$("jList");L.innerHTML="";for(let i=0;i<n;i++){const b=document.createElement("button");b.className="btn";b.textContent=NOTES[i][0];b.onclick=()=>showNote(i);L.appendChild(b)}if(!n)L.innerHTML='<div class="small">Пока ничего. Записки висят у заброшенных построек.</div>';show("journal")}
@@ -650,43 +652,60 @@ $("bJClose").onclick=()=>hideAll();
 
 /* ================= update ================= */
 let footT=0,prevNotes=0,prevMine=0;
-function updateHud(){const n=allNotes().size;$("notes").textContent="Записки: "+n+"/8";$("stam").firstChild.style.width=(G.stam*100)+"%"}
+function updateHud(){const n=allNotes().size;$("noteCount").textContent="Записки: "+n+"/8";$("stam").firstChild.style.width=(G.stam*100)+"%"}
+function updateNoteHint(){
+ const hint=$("noteHint");
+ if(!G.alive||G.spect||G.final||G.t<G.noteHintAt){hint.hidden=true;return}
+ const have=allNotes();let nearest=null,dist=Infinity;
+ for(const note of notesPos){
+  if(have.has(note.id))continue;
+  const d=Math.hypot(note.x-cam.x,note.y-cam.y);
+  if(d<dist){nearest=note;dist=d}
+ }
+ hint.hidden=!nearest;
+ if(!nearest)return;
+ const angle=Math.atan2(nearest.y-cam.y,nearest.x-cam.x)-cam.a;
+ const arrows=["↑","↗","→","↘","↓","↙","←","↖"];
+ const octant=((Math.round(angle/(Math.PI/4))%8)+8)%8;
+ const label="Записка "+arrows[octant]+" "+Math.round(dist*3.4)+" м";
+ if(hint.textContent!==label)hint.textContent=label;
+}
 function freeSpot(x,y){return x>3&&y>3&&x<N-3&&y<N-3&&!grid[(y|0)*N+(x|0)]}
 function targets(){const t=[];if(G.alive&&!G.spect)t.push({x:cam.x,y:cam.y,a:cam.a,me:true});if(!G.solo)for(const p of remotePlayers())if(p.run===G.run&&p.st==="play"&&!p.dead&&p.x>0)t.push({x:p.x,y:p.y,a:p.a});return t}
 function monsterAI(dt,level){
- const M=G.mon;if(!M.active){if(level>=1||G.t>50){M.active=true;M.timer=3}else return}
+ const M=G.mon;if(!M.active){if(level>=2||G.t>=120){M.active=true;M.timer=0}else return}
  const ts=targets();if(!ts.length)return;
  M.timer-=dt;
  let tg=ts[0];let best=1e9;for(const t of ts){const d=Math.hypot(t.x-M.x,t.y-M.y);if(d<best){best=d;tg=t}}
  if(M.timer<=0){tg=ts[(Math.random()*ts.length)|0];
-  const base=Math.max(2.3,11.5-level*1.3),dist=base+Math.random()*2.5;const front=Math.random()<.25+level*.08;
+  const base=Math.max(6,14-level*.9),dist=base+Math.random()*2.5;const front=Math.random()<.15+level*.035;
   for(let k=0;k<20;k++){const ang=tg.a+(front?(Math.random()-.5)*1.1:Math.PI+(Math.random()-.5)*2.6);const nx=tg.x+Math.cos(ang)*dist,ny=tg.y+Math.sin(ang)*dist;if(freeSpot(nx,ny)){M.x=nx;M.y=ny;break}}
-  M.timer=Math.max(1.8,7.5-level*.8)+Math.random()*2.5}
+  M.timer=Math.max(5,12-level*.65)+Math.random()*2.5}
  else{const dx=tg.x-M.x,dy=tg.y-M.y,d=Math.hypot(dx,dy);
-  const chaseR=4+level*.25+(G.final?2:0);
-  if(d<chaseR&&d>.05){const sp=(G.final?1.05:.55+level*.05)*dt;M.x+=dx/d*sp;M.y+=dy/d*sp;M.timer=Math.max(M.timer,1.2)}
-  else if(level>=2&&!M.vis&&d>1){const sp=(.12+level*.07)*dt;M.x+=dx/d*sp;M.y+=dy/d*sp}}
+  const chaseR=3.5+level*.2+(G.final?1:0);
+  if(d<chaseR&&d>.05){const sp=(G.final?.82:.42+level*.045)*dt;M.x+=dx/d*sp;M.y+=dy/d*sp;M.timer=Math.max(M.timer,1.2)}
+  else if(level>=2&&!M.vis&&d>1){const sp=(.1+level*.045)*dt;M.x+=dx/d*sp;M.y+=dy/d*sp}}
 }
 function update(dt){
- G.t+=dt;snowTick(dt,G.t);if(toastT>0){toastT-=dt;if(toastT<=0)$("toast").style.opacity=0}
+ G.t+=dt;G.grace=Math.max(0,G.grace-dt);G.stagger=Math.max(0,G.stagger-dt);snowTick(dt,G.t);if(toastT>0){toastT-=dt;if(toastT<=0)$("toast").style.opacity=0}
  if(G.introT>0){G.introT-=dt;if(G.introT<2)$("intro").style.opacity=Math.max(0,G.introT/2);if(G.introT<=0)$("intro").style.display="none"}
  const notesN=allNotes().size;
- if(notesN!==prevNotes){if(notesN>prevNotes&&!G.solo&&G.myNotes.length===prevMine)toast("Партнёр нашёл записку ("+notesN+"/8). [J] — прочитать",5);prevNotes=notesN;prevMine=G.myNotes.length;updateHud();
+ if(notesN!==prevNotes){if(notesN>prevNotes)G.noteHintAt=G.t+NOTE_HINT_DELAY;if(notesN>prevNotes&&!G.solo&&G.myNotes.length===prevMine)toast("Партнёр нашёл записку ("+notesN+"/8). [J] — прочитать",5);prevNotes=notesN;prevMine=G.myNotes.length;updateHud();
   if(notesN>=8&&!G.final){G.final=true;G.wolf.x=CX;G.wolf.y=CY-1.6;G.wolf.vis=1;setTimeout(()=>{toast("Все записки собраны. Из центра леса доносится вой…",6);sHowl(.28)},1800)}}
  const level=notesN;
  // movement
  if(G.alive&&!G.spect){
   let f=0,s=0;if(keys.KeyW||keys.ArrowUp)f++;if(keys.KeyS||keys.ArrowDown)f--;if(keys.KeyD)s++;if(keys.KeyA)s--;f=clamp(f-TOUCH.jy,-1,1);s=clamp(s+TOUCH.jx,-1,1);
   if(keys.ArrowLeft)cam.a-=1.9*dt;if(keys.ArrowRight)cam.a+=1.9*dt;
-  const moving=Math.abs(f)>.1||Math.abs(s)>.1;let run=(keys.ShiftLeft||keys.ShiftRight||TOUCH.run)&&moving&&G.stam>.05&&f>0;
-  G.stam=clamp(G.stam+(run?-.2:.11)*dt,0,1);
+  const moving=G.stagger<=0&&(Math.abs(f)>.1||Math.abs(s)>.1);let run=(keys.ShiftLeft||keys.ShiftRight||TOUCH.run)&&moving&&G.stam>.05&&f>0;
+  G.stam=clamp(G.stam+(run?-.14:.18)*dt,0,1);
   const sp=(run?1.75:.95)*dt;let mx=(Math.cos(cam.a)*f-Math.sin(cam.a)*s),my=(Math.sin(cam.a)*f+Math.cos(cam.a)*s);const l=Math.hypot(mx,my)||1,amt=Math.min(1,Math.hypot(f,s));mx=mx/l*sp*amt;my=my/l*sp*amt;
   if(moving){if(!blocked(cam.x+mx,cam.y,.18))cam.x+=mx;if(!blocked(cam.x,cam.y+my,.18))cam.y+=my;footT-=dt*(run?1.7:1);cam.bob=Math.sin(G.t*(run?13:8.5))*(run?3:1.8);if(footT<=0){sFoot(run);footT=.5}}else cam.bob*=.85;
   flashFlicker=level>=5&&Math.random()<.02*(level-4)?.25:1;
   // scares
   if(level>=1){G.scareT-=dt;if(G.scareT<=0){G.scareT=60+Math.random()*70;if(Math.random()<.45)scare("face",.22)}}
   if(level>=3){G.ffT-=dt;if(G.ffT<=0&&G.ffOff<=0){G.ffOff=1.9;G.ffT=55+Math.random()*45;sBuzz()}}
-  if(G.ffOff>0){G.ffOff-=dt;flashFlicker=G.ffOff>1.6?(Math.random()<.5?.2:1):0;if(G.ffOff<=0){flashFlicker=1;if(amHost()){const nx=cam.x+Math.cos(cam.a)*2.4,ny=cam.y+Math.sin(cam.a)*2.4;if(freeSpot(nx,ny)){G.mon.active=true;G.mon.x=nx;G.mon.y=ny;G.mon.timer=4;G.mon.stingCd=0}}else scare("face",.25)}}
+  if(G.ffOff>0){G.ffOff-=dt;flashFlicker=G.ffOff>1.6?(Math.random()<.5?.2:1):0;if(G.ffOff<=0)flashFlicker=1}
   if(level>=2&&!G.wolfScared){if(!G.wolfScareT)G.wolfScareT=40+Math.random()*80;G.wolfScareT-=dt;if(G.wolfScareT<=0){G.wolfScared=true;scare("wolf",.4)}}
   // revive partner
   let rvT=null;if(!G.solo)for(const p of remotePlayers())if(p.run===G.run&&p.dead&&p.x>0&&TX[p.ch]&&Math.hypot(p.x-cam.x,p.y-cam.y)<1.4)rvT=p;
@@ -694,12 +713,13 @@ function update(dt){
   // pickup prompt
   let near=false;const have=allNotes();for(const n of notesPos){if(have.has(n.id))continue;const d=Math.hypot(n.x-cam.x,n.y-cam.y);if(d<1.35){let da=Math.atan2(n.y-cam.y,n.x-cam.x)-cam.a;da=Math.atan2(Math.sin(da),Math.cos(da));if(Math.abs(da)<.6)near=true}}
   if(rvT){G.rvProg=keys.KeyE?G.rvProg+dt:Math.max(0,G.rvProg-dt*2);
-   if(G.rvProg>=1.8){G.rvN=(G.rvN||0)+1;G.rvOut={p:rvT.peer,n:G.rvN};G.rvProg=0;sendPresence(true);sRevive();toast(NAMES[rvT.ch]+" снова на ногах!",3)}
-   $("prompt").textContent="Удерживай E — поднять "+ACC[rvT.ch]+(G.rvProg>0?" "+Math.round(G.rvProg/1.8*100)+"%":"");$("prompt").style.display="block"}
+   if(G.rvProg>=REVIVE_TIME){G.rvN=(G.rvN||0)+1;G.rvOut={p:rvT.peer,n:G.rvN};G.rvProg=0;sendPresence(true);sRevive();toast(NAMES[rvT.ch]+" снова на ногах!",3)}
+   $("prompt").textContent="Удерживай E — поднять "+ACC[rvT.ch]+(G.rvProg>0?" "+Math.round(G.rvProg/REVIVE_TIME*100)+"%":"");$("prompt").style.display="block"}
   else{G.rvProg=0;$("prompt").textContent="[E] взять записку";$("prompt").style.display=near?"block":"none"}
   if(G.final&&Math.hypot(G.wolf.x-cam.x,G.wolf.y-cam.y)<1.3)doEnding();
  }
  if(G.spect){const p=remotePlayers().find(p=>p.run===G.run&&!p.dead&&p.x>0);if(p){cam.x+=(p.x-cam.x)*.3;cam.y+=(p.y-cam.y)*.3;let da=p.a-cam.a;da=Math.atan2(Math.sin(da),Math.cos(da));cam.a+=da*.3;cam.flash=!!p.fl}else if(!G.ended){G.spect=false;showDead(true)}}
+ updateNoteHint();
  // monster
  if(amHost())monsterAI(dt,level);else{const h=hostInfo();if(h&&h.s.mx!==undefined){const dx=h.s.mx-G.mon.x,dy=h.s.my-G.mon.y;if(Math.hypot(dx,dy)>1.5){G.mon.x=h.s.mx;G.mon.y=h.s.my}else{G.mon.x+=dx*.25;G.mon.y+=dy*.25}G.mon.active=!!h.s.ma}}
  // positional monster audio
@@ -724,10 +744,19 @@ function postRender(P,dt){
  const pr=project(M,P,.5);
  if(pr&&pr.x>=0&&pr.x<RW){const yy=clamp(pr.y|0,0,RH-1),i=yy*RW+(pr.x|0);if(Math.abs(ZB[i]-pr.d)<.02&&d<(cam.flash?15:8))M.vis=true}
  G.mon.stingCd-=dt;
- if(M.vis){if(!M.seen&&G.mon.stingCd<=0&&d<10){sSting();G.mon.stingCd=7}STATIC+=dt*(.1+.7/Math.max(1,d))*(1+allNotes().size*.1)}else STATIC-=dt*.32;
+ if(M.vis){if(!M.seen&&G.mon.stingCd<=0&&d<10){sSting();G.mon.stingCd=7}STATIC+=dt*.5*(.1+.7/Math.max(1,d))*(1+allNotes().size*.1)}else STATIC-=dt*.6;
  M.seen=M.vis;STATIC=clamp(STATIC,0,1.05);setStaticAudio(STATIC);
- if(G.grace>0){G.grace-=dt;STATIC=Math.min(STATIC,.3);return}
- if(STATIC>=1||d<.7)die();
+ if(G.grace>0){STATIC=Math.min(STATIC,.3);return}
+ if(STATIC>=1||d<.7){
+  if(!G.canRecover){die();return}
+  G.canRecover=false;
+  G.grace=8;
+  G.stagger=1;
+  STATIC=0;
+  setStaticAudio(0);
+  sSting();
+  toast("Долговязый сбил тебя с ног. Отвернись и беги!",4);
+ }
 }
 function setStaticAudio(s){if(A.ctx)A.stat.gain.setTargetAtTime(s*.32,A.ctx.currentTime,.05)}
 
@@ -755,7 +784,7 @@ function glitch(p){if(p<=.03)return;const W=scr.width,H=scr.height;
  sx2.fillStyle=`rgba(130,0,0,${p*.2})`;sx2.fillRect(0,0,W,H)}
 const ACC={yarik:"Ярика",arina:"Арину"};
 function myPeerId(){if(!R)return null;const m=R.peers().find(p=>p.isMe&&p.sameTab);return m?m.peer:null}
-function revive(by){if(G.alive)return;G.alive=true;G.spect=false;STATIC=0;G.grace=4;cam.x=G.bodyX;cam.y=G.bodyY;hideAll();$("hud").classList.add("on");sRevive();toast((by?NAMES[by]+" поднял"+(by==="arina"?"а":"")+" тебя":"Тебя подняли")+"! Беги!",4);sendPresence(true)}
+function revive(by){if(G.alive)return;G.alive=true;G.spect=false;STATIC=0;G.grace=10;G.stagger=0;cam.x=G.bodyX;cam.y=G.bodyY;hideAll();$("hud").classList.add("on");sRevive();toast((by?NAMES[by]+" поднял"+(by==="arina"?"а":"")+" тебя":"Тебя подняли")+"! Беги!",4);sendPresence(true)}
 function showDead(fromSpect){
  const partnerAlive=!G.solo&&remotePlayers().some(p=>p.run===G.run&&!p.dead&&p.st==="play"&&p.x>0);
  $("dTitle").textContent=partnerAlive?"ДОЛГОВЯЗЫЙ ЗАБРАЛ ТЕБЯ":(G.solo?"ДОЛГОВЯЗЫЙ ЗАБРАЛ ТЕБЯ":"ВАС ОБОИХ ЗАБРАЛИ");
